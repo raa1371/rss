@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>سامانه شرکت‌های فولادی</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=IRANSans&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'IRANSans', sans-serif;
+    }
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <!-- Header -->
+  <header class="bg-white shadow p-4 flex items-center justify-between">
+    <div class="flex items-center space-x-4 space-x-reverse">
+      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTOTDcbq3jyDbfLY-fjCwf2Ro-82w3QDNi58A&s" alt="لوگو" class="h-12 w-auto" />
+      <h1 class="text-xl font-bold text-gray-800">سامانه برخط و هوشمند شرکت دانش‌بنیان کاوشگران صنایع معدنی راشا</h1>
+    </div>
+  </header>
+
+  <!-- Main layout -->
+  <div class="flex">
+    <!-- Sidebar Tabs -->
+    <aside class="w-64 bg-white shadow-md h-screen overflow-y-auto">
+      <ul id="companyTabs" class="divide-y divide-gray-200">
+        <!-- Tabs will be inserted by JavaScript -->
+      </ul>
+    </aside>
+
+    <!-- Content Area -->
+    <main class="flex-1 p-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" id="subTabs">
+        <button onclick="showContent('tender')" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">مناقصه</button>
+        <button onclick="showContent('auction')" class="bg-green-500 text-white p-2 rounded hover:bg-green-600">مزایده</button>
+        <button onclick="showContent('research')" class="bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600">اولویت‌های پژوهشی</button>
+      </div>
+      <div id="rssContent" class="bg-white p-4 rounded shadow">
+        <p class="text-gray-500">لطفاً یک بخش را انتخاب کنید.</p>
+      </div>
+      <div id="rssManager" class="hidden bg-white p-4 rounded shadow">
+        <h2 class="text-lg font-semibold mb-4">مدیریت RSS</h2>
+        <label class="block mb-2">نام شرکت</label>
+        <input id="rssCompany" type="text" class="w-full border border-gray-300 p-2 rounded mb-4" placeholder="مثلاً فولاد هرمزگان" />
+
+        <label class="block mb-2">لینک مناقصه</label>
+        <input id="rssTender" type="text" class="w-full border border-gray-300 p-2 rounded mb-4" />
+
+        <label class="block mb-2">لینک مزایده</label>
+        <input id="rssAuction" type="text" class="w-full border border-gray-300 p-2 rounded mb-4" />
+
+        <label class="block mb-2">لینک اولویت پژوهشی</label>
+        <input id="rssResearch" type="text" class="w-full border border-gray-300 p-2 rounded mb-4" />
+
+        <button onclick="addRss()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">ثبت RSS</button>
+        <p id="rssStatus" class="mt-4 text-sm text-green-600"></p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const companies = [
+      "جهان فولاد سیرجان",
+      "فولاد مبارکه",
+      "فولاد هرمزگان",
+      "گهرزمین",
+      "گل گهر",
+      "صنایع معدنی فولاد سنگان",
+      "توسعه آهن و فولاد گل‌گهر",
+      "فولاد خوزستان",
+      "ذوب آهن اصفهان",
+      "صنایع فولاد آلیاژی پاسارگاد",
+      "صبانور",
+      "پارس فولاد سبزوار",
+      "فولاد خراسان",
+      "فولاد مشیز بردسیر",
+      "فولاد آلیاژی ایران",
+      "فولاد غدیر نی‌ریز",
+      "فولاد بوتیای ایرانیان",
+      "معدنی نوظهور کویر بافق",
+      "فولاد ارفع",
+      "شرکت فولاد آذربایجان",
+      "فولاد کاوه جنوب کیش",
+      "فولاد سفید دشت",
+      "فولاد شادگان",
+      "توسعه فراگیر سناباد",
+      "چادرملو",
+      "آهن و فولاد غدیر ایرانیان",
+      "فولاد سیرجان ایرانیان",
+      "فولاد جهان آرا اروند",
+      "فولاد زرند ایرانیان",
+      "مدیریت RSS"
+    ];
+
+    let rssFeeds = {};
+
+    // Fetch saved RSS from PHP file
+    fetch('getRssData.php')
+      .then(response => response.json())
+      .then(data => {
+        rssFeeds = data;
+        loadTabs();
+      });
+
+    function loadTabs() {
+      const companyTabs = document.getElementById("companyTabs");
+      companies.forEach((company) => {
+        const li = document.createElement("li");
+        li.className = "p-4 hover:bg-gray-100 cursor-pointer";
+        li.textContent = company;
+        li.onclick = () => {
+          if (company === "مدیریت RSS") {
+            document.getElementById("rssContent").classList.add("hidden");
+            document.getElementById("rssManager").classList.remove("hidden");
+            return;
+          }
+          document.getElementById("rssContent").classList.remove("hidden");
+          document.getElementById("rssManager").classList.add("hidden");
+          showContent('tender');  // Default show tender
+        };
+        companyTabs.appendChild(li);
+      });
+    }
+
+    function showContent(type) {
+      const currentCompany = "فولاد هرمزگان"; // اینجا باید شرکت انتخاب‌شده را بگذارید
+      if (!rssFeeds[currentCompany] || !rssFeeds[currentCompany][type]) {
+        document.getElementById("rssContent").innerHTML = `<p class='text-red-500'>برای این بخش محتوایی موجود نیست.</p>`;
+        return;
+      }
+      const src = rssFeeds[currentCompany][type];
+      document.getElementById("rssContent").innerHTML = `<iframe src="${src}"></iframe>`;
+    }
+
+    function addRss() {
+      const company = document.getElementById("rssCompany").value.trim();
+      const tender = document.getElementById("rssTender").value.trim();
+      const auction = document.getElementById("rssAuction").value.trim();
+      const research = document.getElementById("rssResearch").value.trim();
+
+      if (!company) return;
+      if (!rssFeeds[company]) rssFeeds[company] = {};
+      if (tender) rssFeeds[company].tender = tender;
+      if (auction) rssFeeds[company].auction = auction;
+      if (research) rssFeeds[company].research = research;
+
+      // Send the data to PHP server
+      fetch('saveRssData.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(rssFeeds)
+      })
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById("rssStatus").textContent = `RSS برای «${company}» ذخیره شد.`;
+      });
+    }
+  </script>
+</body>
+</html>
