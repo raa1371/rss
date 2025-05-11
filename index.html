@@ -15,12 +15,6 @@
       height: 600px;
       border: none;
     }
-    /* اضافه کردن استایل برای نمایش تب‌ها */
-    li {
-      display: block;
-      padding: 10px;
-      background-color: #f7fafc; /* رنگ پس‌زمینه تب‌ها */
-    }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -75,78 +69,7 @@
   </div>
 
   <script>
-    const companies = [
-      "جهان فولاد سیرجان",
-      "فولاد مبارکه",
-      "فولاد هرمزگان",
-      "گهرزمین",
-      "گل گهر",
-      "صنایع معدنی فولاد سنگان",
-      "توسعه آهن و فولاد گل‌گهر",
-      "فولاد خوزستان",
-      "ذوب آهن اصفهان",
-      "صنایع فولاد آلیاژی پاسارگاد",
-      "صبانور",
-      "پارس فولاد سبزوار",
-      "فولاد خراسان",
-      "فولاد مشیز بردسیر",
-      "فولاد آلیاژی ایران",
-      "فولاد غدیر نی‌ریز",
-      "فولاد بوتیای ایرانیان",
-      "معدنی نوظهور کویر بافق",
-      "فولاد ارفع",
-      "شرکت فولاد آذربایجان",
-      "فولاد کاوه جنوب کیش",
-      "فولاد سفید دشت",
-      "فولاد شادگان",
-      "توسعه فراگیر سناباد",
-      "چادرملو",
-      "آهن و فولاد غدیر ایرانیان",
-      "فولاد سیرجان ایرانیان",
-      "فولاد جهان آرا اروند",
-      "فولاد زرند ایرانیان",
-      "مدیریت RSS"
-    ];
-
-    let rssFeeds = {};
-
-    // Load saved RSS from localStorage
-    if (localStorage.getItem("rssFeeds")) {
-      rssFeeds = JSON.parse(localStorage.getItem("rssFeeds"));
-    } else {
-      rssFeeds = {
-        "جهان فولاد سیرجان": {
-          tender: "https://rss.app/embed/v1/wall/THrhFKGVrluPWk22"
-        },
-        "فولاد هرمزگان": {
-          tender: "https://rss.app/embed/v1/wall/PatY1f2zt7LDRBHy",
-          auction: "https://rss.app/embed/v1/wall/PatY1f2zt7LDRBHy"
-        }
-      };
-    }
-
     let currentCompany = "";
-
-    const companyTabs = document.getElementById("companyTabs");
-
-    companies.forEach((company) => {
-      const li = document.createElement("li");
-      li.className = "p-4 hover:bg-gray-100 cursor-pointer";
-      li.textContent = company;
-      li.onclick = () => {
-        currentCompany = company;
-        document.getElementById("rssContent").classList.remove("hidden");
-        document.getElementById("rssManager").classList.add("hidden");
-        if (company === "مدیریت RSS") {
-          document.getElementById("rssContent").classList.add("hidden");
-          document.getElementById("rssManager").classList.remove("hidden");
-          renderRssList();
-          return;
-        }
-        document.getElementById("rssContent").innerHTML = `<h2 class='text-lg font-semibold mb-2'>${company}</h2><p class='text-gray-500'>لطفاً یکی از بخش‌های بالا را انتخاب کنید.</p>`;
-      };
-      companyTabs.appendChild(li);
-    });
 
     function showContent(type) {
       if (!currentCompany || !rssFeeds[currentCompany] || !rssFeeds[currentCompany][type]) {
@@ -157,40 +80,41 @@
       document.getElementById("rssContent").innerHTML = `<iframe src="${src}"></iframe>`;
     }
 
+    // ارسال داده‌ها به PHP و ذخیره در JSON
     function addRss() {
-      const company = document.getElementById("rssCompany").value.trim();
-      const tender = document.getElementById("rssTender").value.trim();
-      const auction = document.getElementById("rssAuction").value.trim();
-      const research = document.getElementById("rssResearch").value.trim();
+      const companyName = document.getElementById("rssCompany").value.trim();
+      const tenderUrl = document.getElementById("rssTender").value.trim();
+      const auctionUrl = document.getElementById("rssAuction").value.trim();
+      const researchUrl = document.getElementById("rssResearch").value.trim();
 
-      if (!company) return;
-      if (!rssFeeds[company]) rssFeeds[company] = {};
-      if (tender) rssFeeds[company].tender = tender;
-      if (auction) rssFeeds[company].auction = auction;
-      if (research) rssFeeds[company].research = research;
+      if (!companyName) return;
 
-      localStorage.setItem("rssFeeds", JSON.stringify(rssFeeds));
-
-      document.getElementById("rssStatus").textContent = `RSS برای «${company}» ذخیره شد.`;
-      renderRssList();
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "add_rss.php", true);
+      xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          document.getElementById("rssStatus").textContent = xhr.responseText;
+          loadRss(); // بعد از ذخیره، RSSها را بارگذاری کن
+        }
+      };
+      xhr.send(`companyName=${encodeURIComponent(companyName)}&tenderUrl=${encodeURIComponent(tenderUrl)}&auctionUrl=${encodeURIComponent(auctionUrl)}&researchUrl=${encodeURIComponent(researchUrl)}`);
     }
 
-    function renderRssList() {
-      const list = document.getElementById("rssList");
-      list.innerHTML = "";
-      Object.keys(rssFeeds).forEach((company) => {
-        const li = document.createElement("li");
-        li.className = "border p-2 rounded bg-gray-50 flex justify-between items-center";
-        li.innerHTML = `<span>${company}</span><button onclick="deleteRss('${company}')" class="text-red-600 hover:underline">حذف</button>`;
-        list.appendChild(li);
-      });
+    // بارگذاری RSSهای ثبت‌شده
+    function loadRss() {
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", "get_rss.php", true);
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          document.getElementById("rssList").innerHTML = xhr.responseText;
+        }
+      };
+      xhr.send();
     }
 
-    function deleteRss(company) {
-      delete rssFeeds[company];
-      localStorage.setItem("rssFeeds", JSON.stringify(rssFeeds));
-      renderRssList();
-    }
+    // بارگذاری اولیه RSSها
+    loadRss();
   </script>
 </body>
 </html>
