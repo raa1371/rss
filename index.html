@@ -15,6 +15,12 @@
       height: 600px;
       border: none;
     }
+    /* اضافه کردن استایل برای نمایش تب‌ها */
+    li {
+      display: block;
+      padding: 10px;
+      background-color: #f7fafc; /* رنگ پس‌زمینه تب‌ها */
+    }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -51,16 +57,19 @@
         <input id="rssCompany" type="text" class="w-full border border-gray-300 p-2 rounded mb-4" placeholder="مثلاً فولاد هرمزگان" />
 
         <label class="block mb-2">لینک مناقصه</label>
-        <input id="rssTender" type="text" class="w-full border border-gray-300 p-2 rounded mb-4" />
+        <input id="rssTender" type="text" class="w-full border border-gray-300 p-2 rounded mb-2" />
 
         <label class="block mb-2">لینک مزایده</label>
-        <input id="rssAuction" type="text" class="w-full border border-gray-300 p-2 rounded mb-4" />
+        <input id="rssAuction" type="text" class="w-full border border-gray-300 p-2 rounded mb-2" />
 
         <label class="block mb-2">لینک اولویت پژوهشی</label>
         <input id="rssResearch" type="text" class="w-full border border-gray-300 p-2 rounded mb-4" />
 
         <button onclick="addRss()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">ثبت RSS</button>
         <p id="rssStatus" class="mt-4 text-sm text-green-600"></p>
+
+        <h3 class="mt-6 text-md font-semibold">RSSهای ثبت‌شده:</h3>
+        <ul id="rssList" class="mt-2 space-y-2"></ul>
       </div>
     </main>
   </div>
@@ -101,37 +110,46 @@
 
     let rssFeeds = {};
 
-    // Fetch saved RSS from PHP file
-    fetch('getRssData.php')
-      .then(response => response.json())
-      .then(data => {
-        rssFeeds = data;
-        loadTabs();
-      });
-
-    function loadTabs() {
-      const companyTabs = document.getElementById("companyTabs");
-      companies.forEach((company) => {
-        const li = document.createElement("li");
-        li.className = "p-4 hover:bg-gray-100 cursor-pointer";
-        li.textContent = company;
-        li.onclick = () => {
-          if (company === "مدیریت RSS") {
-            document.getElementById("rssContent").classList.add("hidden");
-            document.getElementById("rssManager").classList.remove("hidden");
-            return;
-          }
-          document.getElementById("rssContent").classList.remove("hidden");
-          document.getElementById("rssManager").classList.add("hidden");
-          showContent('tender');  // Default show tender
-        };
-        companyTabs.appendChild(li);
-      });
+    // Load saved RSS from localStorage
+    if (localStorage.getItem("rssFeeds")) {
+      rssFeeds = JSON.parse(localStorage.getItem("rssFeeds"));
+    } else {
+      rssFeeds = {
+        "جهان فولاد سیرجان": {
+          tender: "https://rss.app/embed/v1/wall/THrhFKGVrluPWk22"
+        },
+        "فولاد هرمزگان": {
+          tender: "https://rss.app/embed/v1/wall/PatY1f2zt7LDRBHy",
+          auction: "https://rss.app/embed/v1/wall/PatY1f2zt7LDRBHy"
+        }
+      };
     }
 
+    let currentCompany = "";
+
+    const companyTabs = document.getElementById("companyTabs");
+
+    companies.forEach((company) => {
+      const li = document.createElement("li");
+      li.className = "p-4 hover:bg-gray-100 cursor-pointer";
+      li.textContent = company;
+      li.onclick = () => {
+        currentCompany = company;
+        document.getElementById("rssContent").classList.remove("hidden");
+        document.getElementById("rssManager").classList.add("hidden");
+        if (company === "مدیریت RSS") {
+          document.getElementById("rssContent").classList.add("hidden");
+          document.getElementById("rssManager").classList.remove("hidden");
+          renderRssList();
+          return;
+        }
+        document.getElementById("rssContent").innerHTML = `<h2 class='text-lg font-semibold mb-2'>${company}</h2><p class='text-gray-500'>لطفاً یکی از بخش‌های بالا را انتخاب کنید.</p>`;
+      };
+      companyTabs.appendChild(li);
+    });
+
     function showContent(type) {
-      const currentCompany = "فولاد هرمزگان"; // اینجا باید شرکت انتخاب‌شده را بگذارید
-      if (!rssFeeds[currentCompany] || !rssFeeds[currentCompany][type]) {
+      if (!currentCompany || !rssFeeds[currentCompany] || !rssFeeds[currentCompany][type]) {
         document.getElementById("rssContent").innerHTML = `<p class='text-red-500'>برای این بخش محتوایی موجود نیست.</p>`;
         return;
       }
@@ -151,18 +169,27 @@
       if (auction) rssFeeds[company].auction = auction;
       if (research) rssFeeds[company].research = research;
 
-      // Send the data to PHP server
-      fetch('saveRssData.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(rssFeeds)
-      })
-      .then(response => response.json())
-      .then(data => {
-        document.getElementById("rssStatus").textContent = `RSS برای «${company}» ذخیره شد.`;
+      localStorage.setItem("rssFeeds", JSON.stringify(rssFeeds));
+
+      document.getElementById("rssStatus").textContent = `RSS برای «${company}» ذخیره شد.`;
+      renderRssList();
+    }
+
+    function renderRssList() {
+      const list = document.getElementById("rssList");
+      list.innerHTML = "";
+      Object.keys(rssFeeds).forEach((company) => {
+        const li = document.createElement("li");
+        li.className = "border p-2 rounded bg-gray-50 flex justify-between items-center";
+        li.innerHTML = `<span>${company}</span><button onclick="deleteRss('${company}')" class="text-red-600 hover:underline">حذف</button>`;
+        list.appendChild(li);
       });
+    }
+
+    function deleteRss(company) {
+      delete rssFeeds[company];
+      localStorage.setItem("rssFeeds", JSON.stringify(rssFeeds));
+      renderRssList();
     }
   </script>
 </body>
